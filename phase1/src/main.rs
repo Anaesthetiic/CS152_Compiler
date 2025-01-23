@@ -78,14 +78,32 @@ enum Token {
   Divide,
   Modulus,
   Assign,
+  Less,
+  LessEqual,
+  Greater,
+  GreaterEqual,
+  Equality,
+  NotEqual,
   Num(i32),
   Ident(String),
-  If,
-  While,
-  Read, 
   Func,
   Return,
   Int,
+  Print,
+  Read,
+  While,
+  If,
+  Else,
+  Break,
+  Continue,
+  LeftParen,
+  RightParen,
+  LeftCurly,
+  RightCurly,
+  LeftBracket,
+  RightBracket,
+  Comma,
+  Semicolon,
   End,
 }
 
@@ -104,7 +122,7 @@ enum Token {
 // }
 
 
-// This is a lexer that parses numbers and math operations
+// This is a lexer that parses numbers, math operations, keywords and identifiers
 fn lex(code: &str) -> Result<Vec<Token>, String> {
   let bytes = code.as_bytes();
   let mut tokens: Vec<Token> = vec![];
@@ -133,13 +151,143 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       tokens.push(token);
     }
 
+    'a'..='z' | 'A'..='Z' => {
+      let start = i;
+      i += 1;
+      while i < bytes.len() {
+        let next_char = bytes[i] as char;
+        if (next_char >= 'a' && next_char <= 'z') || (next_char >= 'A' && next_char <= 'Z') || (next_char >= '0' && next_char <= '9') || next_char == '_' {
+          i += 1;
+        } else {
+          break;
+        }
+      }
+      let end = i;
+      let identifier = &code[start..end];
+      let token = create_identifier(identifier);
+      tokens.push(token);
+    }
+
+    '(' => {
+      tokens.push(Token::LeftParen);
+      i += 1;
+    }
+
+    ')' => {
+      tokens.push(Token::RightParen);
+      i += 1;
+    }
+
+    '{' => {
+      tokens.push(Token::LeftCurly);
+      i += 1;
+    }
+
+    '}' => {
+      tokens.push(Token::RightCurly);
+      i += 1;
+    }
+
+    '[' => {
+      tokens.push(Token::LeftBracket);
+      i += 1;
+    }
+
+    ']' => {
+      tokens.push(Token::RightBracket);
+      i += 1;
+    }
+
+    ',' => {
+      tokens.push(Token::Comma);
+      i += 1;
+    }
+
+    ';' => {
+      tokens.push(Token::Semicolon);
+      i += 1;
+    }
+
     '+' => {
       tokens.push(Token::Plus);
       i += 1;
     }
 
+    '-' => {
+        tokens.push(Token::Subtract);
+        i += 1;
+    }
+
+    '*' => {
+        tokens.push(Token::Multiply);
+        i += 1;
+    }
+
+    '/' => {
+        tokens.push(Token::Divide);
+        i += 1;
+    }
+
+    '%' => {
+        tokens.push(Token::Modulus);
+        i += 1;
+    }
+
+    '=' => {
+      if i + 1 < bytes.len() && bytes[i + 1] as char == '=' {
+        tokens.push(Token::Equality);
+        i += 2;
+      } else {
+        tokens.push(Token::Assign);
+        i += 1;
+      }
+    }
+
+    '<' => {
+      if i + 1 < bytes.len() && bytes[i + 1] as char == '=' {
+        tokens.push(Token::LessEqual);
+        i += 2;
+      } else {
+        tokens.push(Token::Less);
+        i += 1;
+      }
+    }
+
+    '>' => {
+      if i + 1 < bytes.len() && bytes[i + 1] as char == '=' {
+        tokens.push(Token::GreaterEqual);
+        i += 2;
+      } else {
+        tokens.push(Token::Greater);
+        i += 1;
+      }
+    }
+
+    '!' => {
+      if i + 1 < bytes.len() && bytes[i + 1] as char == '=' {
+        tokens.push(Token::NotEqual);
+        i += 2;
+      } else {
+        return Err(format!("Unrecognized symbol '{}'", c));
+      }
+    }
+
     ' ' | '\n' => {
       i += 1;
+    }
+
+    '#' => {    // remove comments
+      let start = i;
+      i += 1;
+      while i < bytes.len() {
+        let next_char = bytes[i] as char;
+        if (next_char != '\n') {
+          i += 1;
+        } else {
+          break;
+        }
+      }
+      // do not push as token, we want to remove comment
     }
 
     _ => {
@@ -152,6 +300,63 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
   tokens.push(Token::End);
   return Ok(tokens);
 }
+
+fn create_identifier(code: &str) -> Token {
+    match code {
+    "func" => Token::Func,
+    "return" => Token::Return,
+    "int" => Token::Int,
+    "print" => Token::Print,
+    "read" => Token::Read,
+    "while" => Token::While,
+    "if" => Token::If,
+    "else" => Token::Else,
+    "break" => Token::Break,
+    "continue" => Token::Continue,
+    // VARIABLE_NAME => Token::Ident
+    _ => Token::Ident(String::from(code)),
+    }
+  }
+
+  /*fn lex(mut code: &str) -> Result<Vec<Token>, String> {
+    let bytes = code.as_bytes();
+    let mut tokens: Vec<Token> = vec![];
+
+    let mut i = 0;
+    while i < bytes.len() {
+      let c = bytes[i] as char;
+
+      match c {
+        'a'..='z' | 'A'..='Z' => {
+          let start = i;
+          i += 1;
+          while i < bytes.len() {
+            let next_char = bytes[i] as char;
+            if (next_char >= 'a' && next_char <= 'z') || (next_char >= 'A' && next_char <= 'Z') || (next_char >= '0' && next_char <= '9') || next_char == '_' {
+              i += 1;
+            } else {
+              break;
+            }
+          }
+          let end = i;
+          let identifier = &code[start..end];
+          let token = create_identifier(identifier);
+          tokens.push(token);
+        }
+
+        ' ' | '\n' => {
+          i += 1;
+        }
+
+        _ => {
+          return Err(format!("Unrecognized symbol '{}'", c));
+        }
+      }
+    }
+
+    tokens.push(Token::End);
+    return Ok(tokens);
+  } */
 
 // writing tests!
 // testing shows robustness in software, and is good for spotting regressions
